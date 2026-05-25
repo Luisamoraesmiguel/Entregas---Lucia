@@ -1,0 +1,415 @@
+# OPERAÇÃO TURNO CRÍTICO - FluxoNorte
+# ============================================================
+
+# ----- ESTRUTURAS DE DADOS -----
+pedidos = {}
+entregadores = {}
+LIMITE_PEDIDOS_ENTREGADOR = 3  # decisão do time: máximo 3 pedidos por entregador
+
+# ============================================================
+# VALIDAÇÕES
+# ============================================================
+
+def id_pedido_valido(id_pedido):
+    if len(id_pedido) != 5:
+        return False
+    if not id_pedido[0].isalpha():
+        return False
+    if not id_pedido[1:].isdigit():
+        return False
+    return True
+
+def id_entregador_valido(id_entregador):
+    if len(id_entregador) != 4:
+        return False
+    if not id_entregador.isdigit():
+        return False
+    return True
+
+# ============================================================
+# CADASTRO DE PEDIDOS
+# ============================================================
+
+def cadastrar_pedido():
+    print("\n--- CADASTRO DE PEDIDO ---")
+
+    while True:
+        id_pedido = input("ID do pedido (1 letra + 4 números, ex: A1234): ").strip().upper()
+        if not id_pedido_valido(id_pedido):
+            print("ID inválido. Deve iniciar com uma letra e ter 4 números.")
+        elif id_pedido in pedidos:
+            print("Já existe um pedido com esse ID.")
+        else:
+            break
+
+    nome_cliente = input("Nome do cliente: ").strip()
+    endereco = input("Endereço de entrega: ").strip()
+
+    while True:
+        prioridade = input("Prioridade (Alta / Normal): ").strip().capitalize()
+        if prioridade in ["Alta", "Normal"]:
+            break
+        print("Opção inválida. Digite Alta ou Normal.")
+
+    descricao = input("Descrição do pedido: ").strip()
+
+    pedidos[id_pedido] = {
+        "id": id_pedido,
+        "cliente": nome_cliente,
+        "endereco": endereco,
+        "prioridade": prioridade,
+        "descricao": descricao,
+        "status": "Pendente",
+        "id_entregador": None
+    }
+
+    print(f"Pedido {id_pedido} cadastrado com sucesso!")
+
+# ============================================================
+# CADASTRO DE ENTREGADORES
+# ============================================================
+
+def cadastrar_entregador():
+    print("\n--- CADASTRO DE ENTREGADOR ---")
+
+    while True:
+        id_entregador = input("ID do entregador (4 dígitos, ex: 0001): ").strip()
+        if not id_entregador_valido(id_entregador):
+            print("ID inválido. Deve conter exatamente 4 dígitos.")
+        elif id_entregador in entregadores:
+            print("Já existe um entregador com esse ID.")
+        else:
+            break
+
+    nome = input("Nome do entregador: ").strip()
+
+    while True:
+        veiculo = input("Veículo (carro / van / moto): ").strip().lower()
+        if veiculo in ["carro", "van", "moto"]:
+            break
+        print("Veículo inválido. Digite carro, van ou moto.")
+
+    entregadores[id_entregador] = {
+        "id": id_entregador,
+        "nome": nome,
+        "veiculo": veiculo,
+        "pedidos": [],        # lista de IDs dos pedidos associados
+        "disponivel": True
+    }
+
+    print(f"Entregador {id_entregador} cadastrado com sucesso!")
+
+# ============================================================
+# ATUALIZAÇÃO DE PEDIDOS
+# ============================================================
+
+def menu_atualizacao():
+    while True:
+        print("\n--- ATUALIZAÇÃO DE PEDIDOS ---")
+        print("1 - Alterar status do pedido")
+        print("2 - Cancelar pedido")
+        print("3 - Associar entregador a pedido")
+        print("4 - Remover associação de entregador")
+        print("0 - Voltar")
+
+        opcao = input("Escolha: ").strip()
+
+        if opcao == "1":
+            alterar_status()
+        elif opcao == "2":
+            cancelar_pedido()
+        elif opcao == "3":
+            associar_entregador()
+        elif opcao == "4":
+            remover_entregador()
+        elif opcao == "0":
+            break
+        else:
+            print("Opção inválida.")
+
+def alterar_status():
+    print("\n--- ALTERAR STATUS ---")
+    id_pedido = input("ID do pedido: ").strip().upper()
+
+    if id_pedido not in pedidos:
+        print("Pedido não encontrado.")
+        return
+
+    pedido = pedidos[id_pedido]
+    print(f"Status atual: {pedido['status']}")
+
+    while True:
+        novo_status = input("Novo status (Pendente / Em Rota / Entregue / Cancelado): ").strip().capitalize()
+        # corrige "Em rota" para "Em Rota"
+        if novo_status == "Em rota":
+            novo_status = "Em Rota"
+        if novo_status in ["Pendente", "Em Rota", "Entregue", "Cancelado"]:
+            break
+        print("Status inválido.")
+
+    pedido["status"] = novo_status
+    print(f"Status do pedido {id_pedido} atualizado para {novo_status}.")
+
+def cancelar_pedido():
+    print("\n--- CANCELAR PEDIDO ---")
+    id_pedido = input("ID do pedido: ").strip().upper()
+
+    if id_pedido not in pedidos:
+        print("Pedido não encontrado.")
+        return
+
+    pedido = pedidos[id_pedido]
+
+    if pedido["status"] == "Cancelado":
+        print("Pedido já está cancelado.")
+        return
+
+    if pedido["status"] == "Entregue":
+        print("Não é possível cancelar um pedido já entregue.")
+        return
+
+    # remove associação com entregador se houver
+    if pedido["id_entregador"] is not None:
+        id_ent = pedido["id_entregador"]
+        if id_ent in entregadores:
+            if id_pedido in entregadores[id_ent]["pedidos"]:
+                entregadores[id_ent]["pedidos"].remove(id_pedido)
+            # libera entregador se ficou sem pedidos
+            if len(entregadores[id_ent]["pedidos"]) == 0:
+                entregadores[id_ent]["disponivel"] = True
+        pedido["id_entregador"] = None
+
+    pedido["status"] = "Cancelado"
+    print(f"Pedido {id_pedido} cancelado com sucesso.")
+
+def associar_entregador():
+    print("\n--- ASSOCIAR ENTREGADOR A PEDIDO ---")
+    id_pedido = input("ID do pedido: ").strip().upper()
+
+    if id_pedido not in pedidos:
+        print("Pedido não encontrado.")
+        return
+
+    pedido = pedidos[id_pedido]
+
+    if pedido["status"] == "Cancelado":
+        print("Não é possível associar entregador a pedido cancelado.")
+        return
+
+    if pedido["id_entregador"] is not None:
+        print(f"Pedido já possui entregador {pedido['id_entregador']} associado.")
+        return
+
+    id_entregador = input("ID do entregador: ").strip()
+
+    if id_entregador not in entregadores:
+        print("Entregador não encontrado.")
+        return
+
+    entregador = entregadores[id_entregador]
+
+    if not entregador["disponivel"]:
+        print("Entregador indisponível.")
+        return
+
+    if len(entregador["pedidos"]) >= LIMITE_PEDIDOS_ENTREGADOR:
+        print(f"Entregador já atingiu o limite de {LIMITE_PEDIDOS_ENTREGADOR} pedidos.")
+        return
+
+    entregador["pedidos"].append(id_pedido)
+    pedido["id_entregador"] = id_entregador
+
+    # se atingiu o limite, marca como indisponível
+    if len(entregador["pedidos"]) >= LIMITE_PEDIDOS_ENTREGADOR:
+        entregador["disponivel"] = False
+
+    print(f"Entregador {id_entregador} associado ao pedido {id_pedido} com sucesso.")
+
+def remover_entregador():
+    print("\n--- REMOVER ASSOCIAÇÃO DE ENTREGADOR ---")
+    id_pedido = input("ID do pedido: ").strip().upper()
+
+    if id_pedido not in pedidos:
+        print("Pedido não encontrado.")
+        return
+
+    pedido = pedidos[id_pedido]
+
+    if pedido["id_entregador"] is None:
+        print("Este pedido não possui entregador associado.")
+        return
+
+    id_ent = pedido["id_entregador"]
+    if id_ent in entregadores:
+        if id_pedido in entregadores[id_ent]["pedidos"]:
+            entregadores[id_ent]["pedidos"].remove(id_pedido)
+        entregadores[id_ent]["disponivel"] = True
+
+    pedido["id_entregador"] = None
+    print(f"Associação removida do pedido {id_pedido}.")
+
+# ============================================================
+# CONSULTAS
+# ============================================================
+
+def menu_consultas():
+    while True:
+        print("\n--- CONSULTAS ---")
+        print("1 - Pedidos pendentes")
+        print("2 - Pedidos entregues")
+        print("3 - Buscar pedido por ID")
+        print("4 - Entregadores disponíveis")
+        print("5 - Entregas realizadas por um entregador")
+        print("0 - Voltar")
+
+        opcao = input("Escolha: ").strip()
+
+        if opcao == "1":
+            listar_pedidos_por_status("Pendente")
+        elif opcao == "2":
+            listar_pedidos_por_status("Entregue")
+        elif opcao == "3":
+            buscar_pedido_por_id()
+        elif opcao == "4":
+            listar_entregadores_disponiveis()
+        elif opcao == "5":
+            entregas_por_entregador()
+        elif opcao == "0":
+            break
+        else:
+            print("Opção inválida.")
+
+def listar_pedidos_por_status(status):
+    print(f"\n--- PEDIDOS COM STATUS: {status.upper()} ---")
+    encontrados = [p for p in pedidos.values() if p["status"] == status]
+
+    if not encontrados:
+        print("Nenhum pedido encontrado.")
+        return
+
+    for p in encontrados:
+        print(f"ID: {p['id']} | Cliente: {p['cliente']} | Prioridade: {p['prioridade']} | Entregador: {p['id_entregador']}")
+
+def buscar_pedido_por_id():
+    print("\n--- BUSCAR PEDIDO ---")
+    id_pedido = input("ID do pedido: ").strip().upper()
+
+    if id_pedido not in pedidos:
+        print("Pedido não encontrado.")
+        return
+
+    p = pedidos[id_pedido]
+    print(f"\nID: {p['id']}")
+    print(f"Cliente: {p['cliente']}")
+    print(f"Endereço: {p['endereco']}")
+    print(f"Prioridade: {p['prioridade']}")
+    print(f"Descrição: {p['descricao']}")
+    print(f"Status: {p['status']}")
+    print(f"Entregador: {p['id_entregador']}")
+
+def listar_entregadores_disponiveis():
+    print("\n--- ENTREGADORES DISPONÍVEIS ---")
+    disponiveis = [e for e in entregadores.values() if e["disponivel"]]
+
+    if not e in disponiveis:
+        print("Nenhum entregador disponível.")
+        return
+
+    for e in disponiveis:
+        print(f"ID: {e['id']} | Nome: {e['nome']} | Veículo: {e['veiculo']} | Pedidos: {len(e['pedidos'])}/{LIMITE_PEDIDOS_ENTREGADOR}")
+
+def entregas_por_entregador():
+    print("\n--- ENTREGAS POR ENTREGADOR ---")
+    id_entregador = input("ID do entregador: ").strip()
+
+    if id_entregador not in entregadores:
+        print("Entregador não encontrado.")
+        return
+
+    entregador = entregadores[id_entregador]
+    entregues = [p for pid in entregador["pedidos"] if pid in pedidos
+                 for p in [pedidos[pid]] if p["status"] == "Entregue"]
+
+    print(f"\nEntregador: {entregador['nome']}")
+    print(f"Total de entregas realizadas: {len(entregues)}")
+
+    for p in entregues:
+        print(f"  - {p['id']} | {p['cliente']} | {p['endereco']}")
+
+# ============================================================
+# RELATÓRIOS
+# ============================================================
+
+def gerar_relatorios():
+    print("\n--- RELATÓRIO OPERACIONAL ---")
+
+    total = len(pedidos)
+    print(f"\nTotal de pedidos cadastrados: {total}")
+
+    if total == 0:
+        print("Nenhum pedido cadastrado ainda.")
+        return
+
+    # contagem por status
+    status_lista = ["Pendente", "Em Rota", "Entregue", "Cancelado"]
+    print("\nQuantidade por status:")
+    for s in status_lista:
+        quantidade = len([p for p in pedidos.values() if p["status"] == s])
+        print(f"  {s}: {quantidade}")
+
+    # pedidos alta prioridade
+    alta = [p for p in pedidos.values() if p["prioridade"] == "Alta"]
+    print(f"\nPedidos com Alta Prioridade: {len(alta)}")
+    for p in alta:
+        print(f"  - {p['id']} | {p['cliente']} | Status: {p['status']}")
+
+    # entregador com mais entregas
+    if entregadores:
+        mais_entregas = None
+        maior = -1
+        for e in entregadores.values():
+            total_entregue = len([pid for pid in e["pedidos"]
+                                  if pid in pedidos and pedidos[pid]["status"] == "Entregue"])
+            if total_entregue > maior:
+                maior = total_entregue
+                mais_entregas = e
+
+        if mais_entregas and maior > 0:
+            print(f"\nEntregador com mais entregas: {mais_entregas['nome']} (ID: {mais_entregas['id']}) — {maior} entrega(s)")
+        else:
+            print("\nNenhuma entrega concluída ainda.")
+
+
+# MENU PRINCIPAL
+
+
+def menu_principal():
+    while True:
+        print("\n========================================")
+        print("       FLUXONORTE - TURNO CRÍTICO       ")
+        print("========================================")
+        print("1 - Cadastrar Pedido")
+        print("2 - Cadastrar Entregador")
+        print("3 - Atualização de Pedidos")
+        print("4 - Consultas")
+        print("5 - Relatórios Operacionais")
+        print("0 - Sair")
+        
+
+        opcao = input("Escolha uma opção: ").strip()
+
+        if opcao == "1":
+            cadastrar_pedido()
+        elif opcao == "2":
+            cadastrar_entregador()
+        elif opcao == "3":
+            menu_atualizacao()
+        elif opcao == "4":
+            menu_consultas()
+        elif opcao == "5":
+            gerar_relatorios()
+        elif opcao == "0":
+            print("\nSistema encerrando.")
+            break
+        else:
+            print("Opção inválida. Tente novamente.")
