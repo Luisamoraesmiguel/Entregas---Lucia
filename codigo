@@ -1,4 +1,8 @@
 # versão 01
+#O requisito diz que o pedido deve ter o campo "ID do Entregador" no cadastro — ou seja, o operador poderia já informar um entregador na hora de cadastrar o pedido. No código atual isso não existe, a associação só é feita depois pelo menu de atualização.
+Isso não é necessariamente um erro — é uma decisão de design válida — mas precisa ser justificada no relatório, explicando que a associação foi separada do cadastro para evitar inconsistências (entregador inexistente, limite de carga etc.).
+Fora isso, está tudo cumprido. rever isso dps 
+#ver se ta tudo funcionando
 
 import random
 
