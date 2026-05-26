@@ -1,4 +1,5 @@
 #versão 01
+#corrigir numeros dos pedidos para aleatorios
 
 pedidos = []       
 entregadores = []   
