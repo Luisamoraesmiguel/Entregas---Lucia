@@ -1,30 +1,37 @@
-#versão 01
-#corrigir numeros dos pedidos para aleatorios
+# versão 01
 
-pedidos = []       
-entregadores = []   
+import random
 
-contador_pedido = 1
-contador_entregador = 1
+pedidos = []
+entregadores = []
 
+ids_pedidos_usados = []
+ids_entregadores_usados = []
 
 def gerar_id_pedido():
-    global contador_pedido
-    id_gerado = "P" + str(contador_pedido).zfill(4) 
-    contador_pedido += 1
+    letra = "P"
+    numero = random.randint(1000, 9999)
+    while (letra + str(numero)) in ids_pedidos_usados:
+        numero = random.randint(1000, 9999)
+    id_gerado = letra + str(numero)
+    ids_pedidos_usados.append(id_gerado)
     return id_gerado
 
 def gerar_id_entregador():
-    global contador_entregador
-    id_gerado = str(contador_entregador).zfill(4) 
-    contador_entregador += 1
+    numero = random.randint(1000, 9999)
+    while str(numero) in ids_entregadores_usados:
+        numero = random.randint(1000, 9999)
+    id_gerado = str(numero)
+    ids_entregadores_usados.append(id_gerado)
     return id_gerado
+
 
 def buscar_pedido_por_id(id_pedido):
     for pedido in pedidos:
         if pedido["id"] == id_pedido:
             return pedido
     return None
+
 
 def limite_por_veiculo(veiculo):
     if veiculo == "Moto":
@@ -33,13 +40,15 @@ def limite_por_veiculo(veiculo):
         return 4
     elif veiculo == "Van":
         return 6
-    return 2 
+    return 2
+
 
 def buscar_entregador_por_id(id_entregador):
     for entregador in entregadores:
         if entregador["id"] == id_entregador:
             return entregador
     return None
+
 
 def exibir_cabecalho():
     print("=" * 50)
@@ -54,18 +63,34 @@ def cadastrar_pedido():
     id_pedido = gerar_id_pedido()
     print(f">>> ID do pedido gerado automaticamente: {id_pedido}")
 
-    nome_cliente = input(">>> Nome do cliente: ")
-    endereco = input(">>> Endereço de entrega: ")
+    nome_cliente = input(">>> Nome do cliente: ").strip()
+    if nome_cliente == "":
+        print(">>> Nome não pode ser vazio. Cadastro cancelado.")
+        ids_pedidos_usados.remove(id_pedido)
+        return
+
+    endereco = input(">>> Endereço de entrega: ").strip()
+    if endereco == "":
+        print(">>> Endereço não pode ser vazio. Cadastro cancelado.")
+        ids_pedidos_usados.remove(id_pedido)
+        return
 
     print(">>> Prioridade: 1 - Alta  |  2 - Normal")
     opcao_prioridade = input(">>> Escolha a prioridade: ")
     if opcao_prioridade == "1":
         prioridade = "Alta"
-    else:
+    elif opcao_prioridade == "2":
         prioridade = "Normal"
+    else:
+        print(">>> Opção inválida. Cadastro cancelado.")
+        ids_pedidos_usados.remove(id_pedido)
+        return
 
-    descricao = input(">>> Descrição do pedido: ")
-    status = "Pendente"
+    descricao = input(">>> Descrição do pedido: ").strip()
+    if descricao == "":
+        print(">>> Descrição não pode ser vazia. Cadastro cancelado.")
+        ids_pedidos_usados.remove(id_pedido)
+        return
 
     novo_pedido = {
         "id": id_pedido,
@@ -84,7 +109,16 @@ def cadastrar_pedido():
 def cadastrar_entregador():
     print("\n---------- CADASTRO DE ENTREGADOR ----------")
 
-    nome = input(">>> Nome do entregador: ")
+    nome = input(">>> Nome do entregador: ").strip()
+    if nome == "":
+        print(">>> Nome não pode ser vazio. Cadastro cancelado.")
+        return
+
+    for e in entregadores:
+        if e["nome"].lower() == nome.lower():
+            print(">>> Já existe um entregador com esse nome cadastrado.")
+            return
+
     id_entregador = gerar_id_entregador()
     print(f">>> ID do entregador gerado automaticamente: {id_entregador}")
 
@@ -94,22 +128,24 @@ def cadastrar_entregador():
         veiculo = "Carro"
     elif opcao_veiculo == "2":
         veiculo = "Van"
-    else:
+    elif opcao_veiculo == "3":
         veiculo = "Moto"
-
-    disponibilidade = "Disponível"
+    else:
+        print(">>> Opção inválida. Cadastro cancelado.")
+        ids_entregadores_usados.remove(id_entregador)
+        return
 
     novo_entregador = {
         "id": id_entregador,
         "nome": nome,
         "veiculo": veiculo,
-        "disponibilidade": disponibilidade,
-        "pedidos_ativos": []  
+        "disponibilidade": "Disponível",
+        "pedidos_ativos": [],
+        "historico_entregas": []
     }
 
     entregadores.append(novo_entregador)
     print(f"\n>>> Entregador {nome} cadastrado com sucesso! ID: {id_entregador}")
-
 
 
 def atualizar_pedidos():
@@ -135,7 +171,7 @@ def atualizar_pedidos():
         print(">>> Opção inválida.")
 
 def alterar_status():
-    id_pedido = input(">>> Digite o ID do pedido: ")
+    id_pedido = input(">>> Digite o ID do pedido: ").strip()
     pedido = buscar_pedido_por_id(id_pedido)
 
     if pedido is None:
@@ -153,9 +189,19 @@ def alterar_status():
     opcao = input(">>> Novo status: ")
 
     if opcao == "1":
+        if pedido["id_entregador"] is not None:
+            entregador = buscar_entregador_por_id(pedido["id_entregador"])
+            if entregador is not None:
+                if pedido["id"] in entregador["pedidos_ativos"]:
+                    entregador["pedidos_ativos"].remove(pedido["id"])
+                if len(entregador["pedidos_ativos"]) == 0:
+                    entregador["disponibilidade"] = "Disponível"
+            pedido["id_entregador"] = None
         pedido["status"] = "Pendente"
+
     elif opcao == "2":
         pedido["status"] = "Em Rota"
+
     elif opcao == "3":
         pedido["status"] = "Entregue"
         if pedido["id_entregador"] is not None:
@@ -163,6 +209,7 @@ def alterar_status():
             if entregador is not None:
                 if id_pedido in entregador["pedidos_ativos"]:
                     entregador["pedidos_ativos"].remove(id_pedido)
+                entregador["historico_entregas"].append(id_pedido)
                 if len(entregador["pedidos_ativos"]) == 0:
                     entregador["disponibilidade"] = "Disponível"
     else:
@@ -171,8 +218,9 @@ def alterar_status():
 
     print(f">>> Status do pedido {id_pedido} atualizado para: {pedido['status']}")
 
+
 def cancelar_pedido():
-    id_pedido = input(">>> Digite o ID do pedido a cancelar: ")
+    id_pedido = input(">>> Digite o ID do pedido a cancelar: ").strip()
     pedido = buscar_pedido_por_id(id_pedido)
 
     if pedido is None:
@@ -199,8 +247,9 @@ def cancelar_pedido():
     pedido["status"] = "Cancelado"
     print(f">>> Pedido {id_pedido} cancelado com sucesso.")
 
+
 def associar_entregador():
-    id_pedido = input(">>> Digite o ID do pedido: ")
+    id_pedido = input(">>> Digite o ID do pedido: ").strip()
     pedido = buscar_pedido_por_id(id_pedido)
 
     if pedido is None:
@@ -215,7 +264,7 @@ def associar_entregador():
         print(f">>> Este pedido já possui o entregador {pedido['id_entregador']} associado.")
         return
 
-    id_entregador = input(">>> Digite o ID do entregador: ")
+    id_entregador = input(">>> Digite o ID do entregador: ").strip()
     entregador = buscar_entregador_por_id(id_entregador)
 
     if entregador is None:
@@ -234,8 +283,9 @@ def associar_entregador():
 
     print(f">>> Entregador {entregador['nome']} associado ao pedido {id_pedido} com sucesso!")
 
+
 def remover_entregador():
-    id_pedido = input(">>> Digite o ID do pedido: ")
+    id_pedido = input(">>> Digite o ID do pedido: ").strip()
     pedido = buscar_pedido_por_id(id_pedido)
 
     if pedido is None:
@@ -283,16 +333,19 @@ def consultar_informacoes():
     else:
         print(">>> Opção inválida.")
 
+
 def listar_pedidos_por_status(status_filtro):
     print(f"\n>>> Pedidos com status '{status_filtro}':")
     encontrou = False
 
-    lista_ordenada = []
+    lista_alta = []
+    lista_normal = []
     for p in pedidos:
         if p["prioridade"] == "Alta":
-            lista_ordenada.insert(0, p)
+            lista_alta.append(p)
         else:
-            lista_ordenada.append(p)
+            lista_normal.append(p)
+    lista_ordenada = lista_alta + lista_normal
 
     for pedido in lista_ordenada:
         if pedido["status"] == status_filtro:
@@ -302,8 +355,9 @@ def listar_pedidos_por_status(status_filtro):
     if not encontrou:
         print("   Nenhum pedido encontrado.")
 
+
 def buscar_pedido():
-    id_pedido = input(">>> Digite o ID do pedido: ")
+    id_pedido = input(">>> Digite o ID do pedido: ").strip()
     pedido = buscar_pedido_por_id(id_pedido)
 
     if pedido is None:
@@ -322,6 +376,7 @@ def buscar_pedido():
     else:
         print(f"   Entregador:   Não associado")
 
+
 def listar_entregadores_disponiveis():
     print("\n>>> Entregadores Disponíveis:")
     encontrou = False
@@ -333,7 +388,7 @@ def listar_entregadores_disponiveis():
         print("   Nenhum entregador disponível no momento.")
 
 def entregas_por_entregador():
-    id_entregador = input(">>> Digite o ID do entregador: ")
+    id_entregador = input(">>> Digite o ID do entregador: ").strip()
     entregador = buscar_entregador_por_id(id_entregador)
 
     if entregador is None:
@@ -342,13 +397,13 @@ def entregas_por_entregador():
 
     print(f"\n>>> Entregas realizadas por {entregador['nome']}:")
     encontrou = False
-    for pedido in pedidos:
-        if pedido["id_entregador"] == id_entregador and pedido["status"] == "Entregue":
+    for id_p in entregador["historico_entregas"]:
+        pedido = buscar_pedido_por_id(id_p)
+        if pedido is not None:
             encontrou = True
             print(f"   ID: {pedido['id']} | Cliente: {pedido['nome_cliente']} | Endereço: {pedido['endereco']}")
     if not encontrou:
         print("   Nenhuma entrega concluída por este entregador.")
-
 
 def gerar_relatorio():
     print("\n---------- RELATÓRIO OPERACIONAL ----------")
@@ -387,16 +442,12 @@ def gerar_relatorio():
 
     print(f"\n>>> Pedidos com Alta Prioridade: {cont_alta}")
 
-  
     print(f"\n>>> Entregador com mais entregas concluídas:")
     maior = 0
     nome_top = "Nenhum"
 
     for entregador in entregadores:
-        cont = 0
-        for pedido in pedidos:
-            if pedido["id_entregador"] == entregador["id"] and pedido["status"] == "Entregue":
-                cont += 1
+        cont = len(entregador["historico_entregas"])
         if cont > maior:
             maior = cont
             nome_top = entregador["nome"]
@@ -407,7 +458,6 @@ def gerar_relatorio():
         print(f"   {nome_top} com {maior} entrega(s) concluída(s).")
 
     print("\n==========================================")
-
 
 def menu():
     exibir_cabecalho()
