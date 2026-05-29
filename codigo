@@ -3,6 +3,7 @@
 Isso não é necessariamente um erro — é uma decisão de design válida — mas precisa ser justificada no relatório, explicando que a associação foi separada do cadastro para evitar inconsistências (entregador inexistente, limite de carga etc.).
 Fora isso, está tudo cumprido. rever isso dps 
 #ver se ta tudo funcionando
+#tentar diminuir o numero de comparacoes 
 
 import random
 
